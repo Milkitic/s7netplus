@@ -177,7 +177,7 @@ namespace S7.Net
         /// <param name="db">Address of the memory area (if you want to read DB1, this is set to 1). This must be set also for other memory area types: counters, timers,etc.</param>
         /// <param name="startByteAdr">Start byte address. If you want to write DB1.DBW200, this is 200.</param>
         /// <param name="value">Bytes to write. If more than 200, multiple requests will be made.</param>
-        public void WriteBytes(DataType dataType, int db, int startByteAdr, byte[] value)
+        public void WriteBytes(DataType dataType, int db, int startByteAdr, ReadOnlySpan<byte> value)
         {
             int localIndex = 0;
             int count = value.Length;
@@ -334,7 +334,7 @@ namespace S7.Net
             S7WriteMultiple.ParseResponse(response, response.Length, dataItems);
         }
 
-        private void WriteBytesWithASingleRequest(DataType dataType, int db, int startByteAdr, byte[] value, int dataOffset, int count)
+        private void WriteBytesWithASingleRequest(DataType dataType, int db, int startByteAdr, ReadOnlySpan<byte> value, int dataOffset, int count)
         {
             try
             {
@@ -349,7 +349,7 @@ namespace S7.Net
             }
         }
 
-        private byte[] BuildWriteBytesPackage(DataType dataType, int db, int startByteAdr, byte[] value, int dataOffset, int count)
+        private byte[] BuildWriteBytesPackage(DataType dataType, int db, int startByteAdr, ReadOnlySpan<byte> value, int dataOffset, int count)
         {
             int varCount = count;
             // first create the header
@@ -375,7 +375,11 @@ namespace S7.Net
             package.WriteByteArray(Word.ToByteArray((ushort)(varCount * 8)));
 
             // now join the header and the data
-            package.Write(value, dataOffset, count);
+#if NETSTANDARD2_1_OR_GREATER
+            package.Write(value.Slice(dataOffset, count));
+#else
+            package.Write(value.ToArray(), dataOffset, count);
+#endif
 
             return package.ToArray();
         }
